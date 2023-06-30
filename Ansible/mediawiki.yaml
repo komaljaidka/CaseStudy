@@ -1,0 +1,111 @@
+---
+- name: Install MediaWiki 1.39 on Ubuntu
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Update packages
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Install required packages
+      apt:
+        name:
+          - apache2
+          - mysql-server
+          - php
+          - php-mysql
+          - php-gd
+          - php-xml
+          - php-intl
+          - imagemagick
+          - php-apcu
+          - libapache2-mod-php
+          - python-pip
+        state: present
+    - name: Install
+      pip:
+        name: PyMySQL
+
+    - name: Start and enable Apache
+      service:
+        name: apache2
+        state: started
+        enabled: yes
+
+    - name: Start and enable MySQL
+      service:
+        name: mysql
+        state: started
+        enabled: yes
+
+    - name: Secure MySQL installation
+      debconf:
+        name: mysql-server
+        question: mysql-server/root_password
+        value: your_mysql_root_password
+        vtype: password
+      notify:
+        - Restart MySQL
+
+    - name: Create MediaWiki database
+      mysql_db:
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        name: mediawiki
+        state: present
+        login_user: root
+        login_password: your_mysql_root_password
+
+    - name: Create MediaWiki database user
+      mysql_user:
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        name: user
+        password: password
+        priv: user.*:ALL
+        state: present
+        login_user: root
+        login_password: your_mysql_root_password
+
+    - name: Download MediaWiki
+      get_url:
+        url: https://releases.wikimedia.org/mediawiki/1.39/mediawiki-1.39.1.tar.gz
+        dest: /tmp/mediawiki.tar.gz
+        mode: '0644'
+
+    - name: Extract MediaWiki
+      unarchive:
+        src: /tmp/mediawiki.tar.gz
+        dest: /var/www/html/
+        remote_src: yes
+        creates: /var/www/html/mediawiki-1.39.1
+
+    - name: Set ownership and permissions
+      file:
+        path: /var/www/html/mediawiki-1.39.1
+        owner: www-data
+        group: www-data
+        state: directory
+        recurse: yes
+
+    - name: Configure Apache for MediaWiki
+      template:
+        src: mediawiki.conf.j2
+        dest: /etc/apache2/sites-available/mediawiki.conf
+        owner: root
+        group: root
+        mode: '0644'
+      notify:
+        - Restart Apache
+
+  handlers:
+    - name: Restart MySQL
+      service:
+        name: mysql
+        state: restarted
+
+    - name: Restart Apache
+      service:
+        name: apache2
+        state: restarted
+
+

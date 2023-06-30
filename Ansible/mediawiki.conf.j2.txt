@@ -1,0 +1,74 @@
+---
+vars:
+# log-related variables
+logstash_host: localhost
+logstash_port: 12201
+log_file: /tmp/cxserver.log
+# metrics
+metrics_host: localhost
+metrics_port: 8125
+# ratelimiter
+ratelimiter_rate: 10
+ratelimit_hosts: []
+ipaddress: '127.0.0.1'
+ratelimiter_key: 'X-Client-IP'
+# service
+port: 8080
+mwapi_uri: https://komal/w/api.php
+restbase_uri: http://localhost:7231
+proxy:
+jwt_token: abcdef
+apertium_uri: http://localhost:2737
+yandex_key: abcdefg
+lingocloud_key: abcdefg
+lingocloud_uri: https://api.interpreter.caiyunai.com/v1
+lingocloud_account: wikimedia
+matxin_key: abcdefg
+matxin_uri: http://matxin.elhuyar.eus/API
+youdao_app_key: abcdefg
+youdao_app_secret: abcdefg
+google_key: abcdefg
+google_uri: https://www.googleapis.com/language/translate/v2
+domain: komal
+
+
+# Number of worker processes to spawn.
+# Set to 0 to run everything in a single process without clustering.
+# Use 'ncpu' to run as many workers as there are CPU units
+num_workers: ncpu
+
+# Log error messages and gracefully restart a worker if v8 reports that it
+# uses more heap (note: not RSS) than this many mb.
+worker_heap_limit_mb: 300
+
+# The maximum interval in ms that can pass between two beat messages
+# sent by each worker to the master before it is killed
+worker_heartbeat_timeout: 7500
+
+# Logger info
+logging:
+  level: warn
+  name: cxserver
+  streams:
+    - host: <%= logstash_host %>
+      port: <%= logstash_port %>
+      type: gelf
+    - level: info
+      path: <%= log_file %>
+      type: file
+
+# Statsd metrics reporter
+metrics:
+  name: cxserver
+  host: <%= metrics_host %>
+  port: <%= metrics_port %>
+  type: statsd
+
+ratelimiter:
+  type: kademlia
+  seeds: ['<%= ratelimit_hosts|join("','") %>']
+  listen:
+    address: <%= ipaddress %>
+    port: <%= ratelimit_port %>
+
+
